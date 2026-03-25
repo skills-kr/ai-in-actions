@@ -16,11 +16,11 @@ env:
 
 jobs:
   find_exercise:
-    name: Find Exercise Issue
-    uses: skills/exercise-toolkit/.github/workflows/find-exercise-issue.yml@v0.7.0
+    name: 실습 이슈 찾기
+    uses: skills-kr/exercise-toolkit/.github/workflows/find-exercise-issue.yml@kr-v0.6.0
 
   check_step_work:
-    name: Check step work
+    name: 단계 작업 확인
     runs-on: ubuntu-latest
     needs: [find_exercise]
     env:
@@ -34,9 +34,9 @@ jobs:
       - name: Get response templates
         uses: actions/checkout@v5
         with:
-          repository: skills/exercise-toolkit
+          repository: skills-kr/exercise-toolkit
           path: exercise-toolkit
-          ref: v0.7.0
+          ref: kr-v0.6.0
 
       - name: Find last comment
         id: find-last-comment
@@ -57,7 +57,7 @@ jobs:
 
       # START: Check practical exercise
 
-      - name: Check if Issue Completeness workflow completed successfully
+      - name: Issue Completeness 워크플로우 성공 완료 확인
         id: check-workflow-success
         continue-on-error: true
         run: |
@@ -80,17 +80,17 @@ jobs:
           vars: |
             step_number: 2
             results_table:
-              - description: "Issue Completeness workflow completed successfully"
+              - description: "Issue Completeness 워크플로우가 성공적으로 완료됨"
                 passed: ${{ steps.check-workflow-success.outcome == 'success' }}
 
       # END: Check practical exercise
 
-      - name: Fail job if not all checks passed
+      - name: 모든 검사 통과 실패 시 작업 실패
         if: contains(steps.*.outcome, 'failure')
         run: exit 1
 
   post_review_content:
-    name: Post review content
+    name: 리뷰 내용 게시
     needs: [find_exercise, check_step_work]
     runs-on: ubuntu-latest
     env:
@@ -104,9 +104,9 @@ jobs:
       - name: Get response templates
         uses: actions/checkout@v5
         with:
-          repository: skills/exercise-toolkit
+          repository: skills-kr/exercise-toolkit
           path: exercise-toolkit
-          ref: v0.7.0
+          ref: kr-v0.6.0
 
       - name: Create comment - step finished - final review next
         uses: GrantBirki/comment@v2.1.1
@@ -127,10 +127,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Workshop Tracker에 완료 보고
+        if: success()
+        continue-on-error: true
+        run: |
+          SESSION_ID=$(jq -r '.sessionId' .github/workshop-config.json)
+          TRACK=$(jq -r '.track' .github/workshop-config.json)
+          API_URL=$(jq -r '.apiUrl' .github/workshop-config.json)
+          curl -s -X POST "$API_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"sessionId\": \"$SESSION_ID\",
+              \"type\": \"end\",
+              \"step\": 2,
+              \"description\": \"AI 이슈 분석\",
+              \"username\": \"$GITHUB_ACTOR\",
+              \"repo\": \"$GITHUB_REPOSITORY\",
+              \"track\": \"$TRACK\",
+              \"runId\": \"$GITHUB_RUN_ID\"
+            }" || true
+
   finish_exercise:
-    name: Finish Exercise
+    name: 실습 완료
     needs: [find_exercise, post_review_content]
-    uses: skills/exercise-toolkit/.github/workflows/finish-exercise.yml@v0.7.1
+    uses: skills-kr/exercise-toolkit/.github/workflows/finish-exercise.yml@kr-v0.6.0
     with:
       issue-url: ${{ needs.find_exercise.outputs.issue-url }}
-      exercise-title: "AI in Actions"
+      exercise-title: "Actions에서 AI 활용하기"

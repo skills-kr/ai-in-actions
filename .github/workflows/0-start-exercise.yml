@@ -1,4 +1,4 @@
-name: Step 0 # Start Exercise
+name: "Step 0: 실습 시작"
 
 on:
   push:
@@ -17,14 +17,14 @@ jobs:
   start_exercise:
     if: |
       !github.event.repository.is_template
-    name: Start Exercise
-    uses: skills/exercise-toolkit/.github/workflows/start-exercise.yml@v0.7.0
+    name: 실습 시작
+    uses: skills-kr/exercise-toolkit/.github/workflows/start-exercise.yml@kr-v0.6.0
     with:
-      exercise-title: "AI in Actions"
-      intro-message: "Learn how to leverage AI models in your GitHub Actions automation workflows"
+      exercise-title: "Actions에서 AI 활용하기"
+      intro-message: "GitHub Actions 자동화 워크플로우에서 AI 모델을 활용하는 방법을 배워봅니다"
 
   post_next_step_content:
-    name: Post next step content
+    name: 다음 단계 내용 게시
     runs-on: ubuntu-latest
     needs: [start_exercise]
     env:
@@ -38,9 +38,9 @@ jobs:
       - name: Get response templates
         uses: actions/checkout@v5
         with:
-          repository: skills/exercise-toolkit
+          repository: skills-kr/exercise-toolkit
           path: exercise-toolkit
-          ref: v0.7.0
+          ref: kr-v0.6.0
 
       - name: Create comment - add step content
         uses: GrantBirki/comment@v2.1.1
@@ -64,3 +64,23 @@ jobs:
           gh workflow enable "Step 1"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Workshop Tracker에 시작 보고
+        if: success()
+        continue-on-error: true
+        run: |
+          SESSION_ID=$(jq -r '.sessionId' .github/workshop-config.json)
+          TRACK=$(jq -r '.track' .github/workshop-config.json)
+          API_URL=$(jq -r '.apiUrl' .github/workshop-config.json)
+          curl -s -X POST "$API_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"sessionId\": \"$SESSION_ID\",
+              \"type\": \"start\",
+              \"step\": 0,
+              \"description\": \"실습 시작\",
+              \"username\": \"$GITHUB_ACTOR\",
+              \"repo\": \"$GITHUB_REPOSITORY\",
+              \"track\": \"$TRACK\",
+              \"runId\": \"$GITHUB_RUN_ID\"
+            }" || true
